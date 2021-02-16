@@ -9,7 +9,7 @@ python3 setup.py install
 This will install the package and all dependencies. If you want to run
 `shortsim-ngrcos` on the GPU, you need to install the CUDA library and FAISS
 with GPU support. See
-(the instructions here)[https://github.com/facebookresearch/faiss/blob/master/INSTALL.md#install-via-conda]
+[the instructions here](https://github.com/facebookresearch/faiss/blob/master/INSTALL.md#install-via-conda)
 on how to do it.
 
 ## Commands
