@@ -52,6 +52,11 @@ script takes the following CLI parameters:
 n-grams are used (default: 200). Large values may cause high RAM usage.
 * `-g`, `--use-gpu`: use the GPU if possible. If not, it will automatically
 fall back to CPU.
+* `-i`, `--index-file`: load the verses from this file into the index,
+instead of the ones supplied on standard input. The verses from stdin will
+still be used as a query, so that this allows for searching similarities
+*between two datasets* (one provided by `-i FILENAME`, the other on stdin),
+rather than *within one dataset*.
 * `-k`: the number of nearest neighbors to compute for every string. (default:
 10, in practice higher values are useful)
 * `-m`, `--min-ngrams`: The minimum number of used n-grams (from our vocabulary
@@ -62,10 +67,6 @@ all similar to each other. (default: 10)
 * `-q`, `--query-size`: how much points to pass to FAISS in one query. This
 doesn't affect the results, only performance, and it's safe to leave the
 default value in place. (default: 100)
-* `-qs`, `--query-start`: only compute nearest neighbors of strings with ID
-`>= qs` (default: 0).
-* `-qe`, `--query-end`: only compute nearest neighbors of strings with ID
-`<= qe` (default: `None`, i.e. not applied).
 * `-t`, `--threshold`: minimum similarity to output a pair. (default: 0.7)
 * `-T`, `--text`: additionaly to IDs, print also the strings on the output. The
 output is then a five-column list instead of three.
