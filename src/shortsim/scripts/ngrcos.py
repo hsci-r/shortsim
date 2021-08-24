@@ -18,6 +18,62 @@ def ngrams(string, n):
     return (string[i:i+n] for i in range(len(string)-n+1))
 
 
+def determine_top_ngrams(verses, n, dim):
+    ngram_freq = defaultdict(lambda: 0)
+    for text in map(itemgetter(1), verses):
+        for ngr in ngrams(text, n):
+            ngram_freq[ngr] += 1
+
+    ngram_ids = {
+        ngr : i \
+        for i, (ngr, freq) in enumerate(sorted(
+            ngram_freq.items(), key=itemgetter(1), reverse=True)[:dim]) }
+    return ngram_ids
+
+
+def vectorize(verses, ngram_ids, n=2, dim=200, min_ngrams=10):
+    # FIXME memory is being wasted here by storing v_ids and verses again
+    # TODO make the progress printer optional
+    v_ids, v_texts, rows = [], [], []
+    for (v_id, text) in tqdm.tqdm(verses):
+        v_ngr_ids = [ngram_ids[ngr] for ngr in ngrams(text, n) \
+                     if ngr in ngram_ids]
+        if len(v_ngr_ids) >= min_ngrams:
+            row = np.zeros(dim, dtype=np.float32)
+            for ngr_id in v_ngr_ids:
+                row[ngr_id] += 1
+            rows.append(row)
+            v_ids.append(v_id)
+            v_texts.append(text)
+    m = np.vstack(rows)
+    m = np.divide(m, norm(m, axis=1).reshape((m.shape[0], 1)))
+    return v_ids, v_texts, m
+
+
+def find_similarities(index, m, k, threshold, qs, qe, query_size, print_progress):
+    if print_progress:
+        progressbar = tqdm.tqdm(total=qe-qs)
+    for i in range(qs, qe, query_size):
+        query = range(i, min(qe, i+query_size))
+        D, I = index.search(m[query,], k)
+        for i, q in enumerate(query):
+            for j in range(k):
+                if D[i,j] >= threshold:
+                    yield (q, I[i,j], D[i,j])
+        if print_progress:
+            progressbar.update(D.shape[0])
+
+
+def read_verses(fp):
+    result = []
+    for line in fp:
+        spl = line.rstrip().split('\t')
+        if len(spl) < 2: continue
+        v_id, text = spl[0], spl[1]
+        result.append((v_id, text))
+    return result
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description='Compute the n-gram similarities on short strings.')
@@ -66,42 +122,16 @@ def main():
         except Exception:
             warnings.warn('GPU not available!')
 
-    verses = []
-    for line in sys.stdin:
-        spl = line.rstrip().split('\t')
-        if len(spl) < 2: continue
-        v_id, text = spl[0], spl[1]
-        verses.append((v_id, text))
+    verses = read_verses(sys.stdin)
 
     sys.stderr.write('Counting n-gram frequencies\n')
-    ngram_freq = defaultdict(lambda: 0)
-    for text in map(itemgetter(1), verses):
-        for ngr in ngrams(text, args.n):
-            ngram_freq[ngr] += 1
-
-    ngram_ids = {
-        ngr : i \
-        for i, (ngr, freq) in enumerate(sorted(
-            ngram_freq.items(), key=itemgetter(1), reverse=True)[:args.dim]) }
+    ngram_ids = determine_top_ngrams(verses, args.n, args.dim)
     sys.stderr.write(' '.join(ngram_ids.keys()) + '\n')
 
-    # FIXME memory is being wasted here by storing v_ids and verses again
     sys.stderr.write('Creating a dense matrix\n')
-    v_ids, v_texts, rows = [], [], []
-    for (v_id, text) in tqdm.tqdm(verses):
-        v_ngr_ids = [ngram_ids[ngr] for ngr in ngrams(text, args.n) \
-                     if ngr in ngram_ids]
-        if len(v_ngr_ids) >= args.min_ngrams:
-            row = np.zeros(args.dim, dtype=np.float32)
-            for ngr_id in v_ngr_ids:
-                row[ngr_id] += 1
-            rows.append(row)
-            v_ids.append(v_id)
-            v_texts.append(text)
-    m = np.vstack(rows)
-
-    sys.stderr.write('Normalizing\n')
-    m = np.divide(m, norm(m, axis=1).reshape((m.shape[0], 1)))
+    v_ids, v_texts, m = \
+        vectorize(verses, ngram_ids,
+                  n=args.n, dim=args.dim, min_ngrams=args.min_ngrams)
 
     sys.stderr.write('Creating a FAISS index\n')
     index = faiss.IndexFlatIP(args.dim)
@@ -120,23 +150,15 @@ def main():
 
     sys.stderr.write('Searching for nearest neighbors\n')
     progressbar = None
-    if args.print_progress:
-        progressbar = tqdm.tqdm(total=qe-qs)
-    for i in range(qs, qe, args.query_size):
-        query = range(i, min(qe, i+args.query_size))
-        D, I = index.search(m[query,], args.k)
-        for i, q in enumerate(query):
-            for j in range(args.k):
-                if D[i,j] >= args.threshold:
-                    v1_id = v_ids[q]
-                    v2_id = v_ids[I[i,j]]
-                    if v1_id != v2_id:
-                        if args.text:
-                            v1_text = v_texts[q]
-                            v2_text = v_texts[I[i,j]]
-                            print(v1_id, v1_text, v2_id, v2_text, D[i,j], sep='\t')
-                        else:
-                            print(v1_id, v2_id, D[i,j], sep='\t')
-        if args.print_progress:
-            progressbar.update(D.shape[0])
+    sims = find_similarities(index, m, args.k, args.threshold, qs, qe,
+                             args.query_size, args.print_progress)
+    for i, j, sim in sims:
+        v1_id = v_ids[i]
+        v2_id = v_ids[j]
+        if args.text:
+            v1_text = v_texts[i]
+            v2_text = v_texts[j]
+            print(v1_id, v1_text, v2_id, v2_text, sim, sep='\t')
+        else:
+            print(v1_id, v2_id, sim, sep='\t')
 
