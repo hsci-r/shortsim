@@ -58,7 +58,7 @@ def find_similarities(index, m, k, threshold, query_size, print_progress):
         D, I = index.search(m[query,], k)
         for i, q in enumerate(query):
             for j in range(k):
-                if D[i,j] >= threshold:
+                if q != I[i,j] and D[i,j] >= threshold:
                     yield (q, I[i,j], D[i,j])
         if print_progress:
             progressbar.update(D.shape[0])
