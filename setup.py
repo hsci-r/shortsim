@@ -19,6 +19,7 @@ setup(
         'console_scripts' : [
             'shortsim-align   = shortsim.scripts.align:main',
             'shortsim-cluster = shortsim.scripts.cluster:main',
+            'shortsim-fastss  = shortsim.scripts.fastss:main',
             'shortsim-ngrcos  = shortsim.scripts.ngrcos:main',
         ]
     }

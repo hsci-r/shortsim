@@ -73,6 +73,31 @@ output is then a five-column list instead of three.
 * `-p`, `--print-progress`: print a progress bar while searching for
 similarities.
 
+### `shortsim-fastss`
+
+Computes pairs of similar strings using the FastSS algorithm [1]. It takes a 
+list of pairs `word_id <TAB> word` on standard input:
+```
+1       hair
+2       hare
+3       haze
+4       hose
+5       house
+```
+
+and prints out a list of IDs of similar word pairs (i.e. pairs of words for 
+which the `k`-deletion neighborhoods overlap):
+```
+1       2
+2       3
+4       5
+```
+
+CLI parameters:
+* `-k`: the maximum number of deletions while generating substrings,
+* `-T`, `--text`: additionaly to IDs, print also the strings on the output. The
+output is then a four-column list instead of two.
+
 ### `shortsim-cluster`
 
 This implements the Chinese Whispers clustering algorithm. It takes as input
@@ -128,3 +153,9 @@ And returns the original columns plus `alignment`,
 ```
 
 Currently it takes no parameters.
+
+## References
+
+[1] T. Bocek, E. Hunt, B. Stiller,
+[Fast Similarity Search in Large Dictionaries](https://fastss.csg.uzh.ch/ifi-2007.02.pdf).
+Technical report, Unversity of Zurich, 2007.
