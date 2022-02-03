@@ -31,7 +31,7 @@ def determine_top_ngrams(verses, n, dim):
     return ngram_ids
 
 
-def vectorize(verses, ngram_ids, n=2, dim=200, min_ngrams=10):
+def vectorize(verses, ngram_ids, n=2, dim=200, min_ngrams=10, weighting='plain'):
     # FIXME memory is being wasted here by storing v_ids and verses again
     # TODO make the progress printer optional
     v_ids, v_texts, rows = [], [], []
@@ -46,6 +46,10 @@ def vectorize(verses, ngram_ids, n=2, dim=200, min_ngrams=10):
             v_ids.append(v_id)
             v_texts.append(text)
     m = np.vstack(rows)
+    if weighting == 'sqrt':
+        m = np.sqrt(m)
+    elif weighting == 'binary':
+        m = np.asarray(m > 0, dtype=np.float32)
     m = np.divide(m, norm(m, axis=1).reshape((m.shape[0], 1)))
     return v_ids, v_texts, m
 
@@ -106,6 +110,9 @@ def parse_arguments():
     parser.add_argument(
         '-p', '--print-progress', action='store_true',
         help='Print a progress bar.')
+    parser.add_argument(
+        '-w', '--weighting', choices=['plain', 'sqrt', 'binary'],
+        default='plain', help='Weighting of bigram frequencies.')
     return parser.parse_args()
 
 
@@ -132,12 +139,14 @@ def main():
     sys.stderr.write('Creating a dense matrix\n')
     query_v_ids, query_v_texts, query_m = \
         vectorize(query_verses, ngram_ids,
-                  n=args.n, dim=args.dim, min_ngrams=args.min_ngrams)
+                  n=args.n, dim=args.dim, min_ngrams=args.min_ngrams,
+                  weighting=args.weighting)
     index_v_ids, index_v_texts, index_m = query_v_ids, query_v_texts, query_m
     if index_verses:
         index_v_ids, index_v_texts, index_m = \
             vectorize(index_verses, ngram_ids,
-                      n=args.n, dim=args.dim, min_ngrams=args.min_ngrams)
+                      n=args.n, dim=args.dim, min_ngrams=args.min_ngrams,
+                      weighting=args.weighting)
 
     sys.stderr.write('Creating a FAISS index\n')
     index = faiss.IndexFlatIP(args.dim)
