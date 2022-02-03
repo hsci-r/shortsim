@@ -72,6 +72,9 @@ default value in place. (default: 100)
 output is then a five-column list instead of three.
 * `-p`, `--print-progress`: print a progress bar while searching for
 similarities.
+* `-w`, `--weighting`: the function to apply to the n-gram frequency matrix.
+Possible options are: `plain` (no weighting), `sqrt` and `binary` (turn all 
+nonzero values to ones).
 
 ### `shortsim-fastss`
 
