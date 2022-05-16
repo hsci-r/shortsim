@@ -9,49 +9,7 @@ import faiss
 import numpy as np
 from numpy.linalg import norm
 
-
-# TODO refactor some of the functionality into a library, so that it can
-# also be called from Python code.
-
-
-def ngrams(string, n):
-    return (string[i:i+n] for i in range(len(string)-n+1))
-
-
-def determine_top_ngrams(verses, n, dim):
-    ngram_freq = defaultdict(lambda: 0)
-    for text in map(itemgetter(1), verses):
-        for ngr in ngrams(text, n):
-            ngram_freq[ngr] += 1
-
-    ngram_ids = {
-        ngr : i \
-        for i, (ngr, freq) in enumerate(sorted(
-            ngram_freq.items(), key=itemgetter(1), reverse=True)[:dim]) }
-    return ngram_ids
-
-
-def vectorize(verses, ngram_ids, n=2, dim=200, min_ngrams=10, weighting='plain'):
-    # FIXME memory is being wasted here by storing v_ids and verses again
-    # TODO make the progress printer optional
-    v_ids, v_texts, rows = [], [], []
-    for (v_id, text) in tqdm.tqdm(verses):
-        v_ngr_ids = [ngram_ids[ngr] for ngr in ngrams(text, n) \
-                     if ngr in ngram_ids]
-        if len(v_ngr_ids) >= min_ngrams:
-            row = np.zeros(dim, dtype=np.float32)
-            for ngr_id in v_ngr_ids:
-                row[ngr_id] += 1
-            rows.append(row)
-            v_ids.append(v_id)
-            v_texts.append(text)
-    m = np.vstack(rows)
-    if weighting == 'sqrt':
-        m = np.sqrt(m)
-    elif weighting == 'binary':
-        m = np.asarray(m > 0, dtype=np.float32)
-    m = np.divide(m, norm(m, axis=1).reshape((m.shape[0], 1)))
-    return v_ids, v_texts, m
+from shortsim.ngrcos import determine_top_ngrams, vectorize
 
 
 def find_similarities(index, m, k, threshold, query_size, print_progress):
@@ -133,18 +91,20 @@ def main():
             index_verses = read_verses(fp)
 
     sys.stderr.write('Counting n-gram frequencies\n')
-    ngram_ids = determine_top_ngrams(index_verses+query_verses, args.n, args.dim)
+    ngram_ids = determine_top_ngrams(
+        [text for (v_id, text) in index_verses+query_verses],
+        args.n, args.dim)
     sys.stderr.write(' '.join(ngram_ids.keys()) + '\n')
 
     sys.stderr.write('Creating a dense matrix\n')
-    query_v_ids, query_v_texts, query_m = \
-        vectorize(query_verses, ngram_ids,
+    query_v_ids, query_v_texts, query_ngr_ids, query_m = \
+        vectorize(query_verses, ngram_ids=ngram_ids,
                   n=args.n, dim=args.dim, min_ngrams=args.min_ngrams,
                   weighting=args.weighting)
     index_v_ids, index_v_texts, index_m = query_v_ids, query_v_texts, query_m
     if index_verses:
-        index_v_ids, index_v_texts, index_m = \
-            vectorize(index_verses, ngram_ids,
+        index_v_ids, index_v_texts, index_ngr_ids, index_m = \
+            vectorize(index_verses, ngram_ids=ngram_ids,
                       n=args.n, dim=args.dim, min_ngrams=args.min_ngrams,
                       weighting=args.weighting)
 
