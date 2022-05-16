@@ -14,7 +14,7 @@ setup(
     packages=find_packages('src', exclude=['tests', 'tests.*']),
     package_dir={'': 'src'},
     test_suite='tests',
-    install_requires=['numpy', 'scipy', 'faiss', 'tqdm'],
+    install_requires=['numpy', 'scipy', 'tqdm'],
     entry_points={
         'console_scripts' : [
             'shortsim-align   = shortsim.scripts.align:main',
