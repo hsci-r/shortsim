@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix, csr_matrix
 import sys
 import tqdm
 
@@ -24,7 +24,7 @@ def load_sims(fp, max_v_id = None, min_sim = 0):
     sims = lil_matrix((n, n), dtype=np.float32)
     for v1_id, v2_id, sim in tqdm.tqdm(data):
         sims[v1_id-1, v2_id-1] = (sim-min_sim)/(1-min_sim)
-    return sims
+    return csr_matrix(sims)
 
 def load_sims_from_file(filename, **kwargs):
     with open(filename) as fp:

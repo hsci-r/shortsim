@@ -1,4 +1,3 @@
-from collections import defaultdict
 import numpy as np
 from operator import itemgetter
 import random
@@ -34,13 +33,12 @@ def chinese_whispers(sims):
         changed = 0
         random.shuffle(idx)
         for i in tqdm.tqdm(idx):
-            cl = defaultdict(lambda: 0)
-            for j in sims.rows[i]:
-                cl[c[j]] += sims[i,j]
-            if not cl:
+            j, k = sims.indptr[i], sims.indptr[i+1]
+            if j == k:
                 continue
-            cl_max, score = max(((x, y) for x, y in cl.items()),
-                                key = itemgetter(1))
+            cl_ids, cl_inv = np.unique(c[sims.indices[j:k]], return_inverse=True)
+            scores = np.bincount(cl_inv, weights=sims.data[j:k])
+            cl_max = cl_ids[np.argmax(scores)]
             if c[i] != cl_max:
                 changed += 1
                 c[i] = cl_max
