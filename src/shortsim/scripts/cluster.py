@@ -6,7 +6,7 @@ import tqdm
 
 from shortsim.clustering import chinese_whispers
 
-def load_sims(fp, max_v_id = None, min_sim = 0):
+def load_sims(fp, max_v_id = None, min_sim = 0, loop_weight = 0):
     n = 1
     data = []
     print('Reading the input', file=sys.stderr)
@@ -22,6 +22,9 @@ def load_sims(fp, max_v_id = None, min_sim = 0):
             n = v2_id
     print('Buiding the matrix...', file=sys.stderr)
     sims = lil_matrix((n, n), dtype=np.float32)
+    if loop_weight > 0:
+        for i in range(sims.shape[0]):
+            sims[i,i] = loop_weight
     for v1_id, v2_id, sim in tqdm.tqdm(data):
         sims[v1_id-1, v2_id-1] = (sim-min_sim)/(1-min_sim)
     return csr_matrix(sims)
@@ -36,6 +39,8 @@ def parse_arguments():
         description='Cluster the verses according to similarity using'
                     ' the Chinese Whispers algorithm.')
     parser.add_argument('-i', '--input_file', type=str)
+    parser.add_argument('-l', '--loop-weight', type=float, default=0,
+                        help='Add loop edges with the specified weight.')
     parser.add_argument('-n', '--max_v_id', type=int)
     parser.add_argument('-s', '--min_sim', type=float, default=0)
     args = parser.parse_args()
@@ -44,7 +49,8 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    sims = load_sims_from_file(args.input_file, max_v_id=args.max_v_id, min_sim=args.min_sim) \
+    sims = load_sims_from_file(args.input_file, max_v_id=args.max_v_id,
+                               min_sim=args.min_sim, loop_weight=args.loop_weight) \
            if args.input_file is not None \
            else load_sims(sys.stdin, max_v_id=args.max_v_id, min_sim=args.min_sim)
     c = chinese_whispers(sims)
