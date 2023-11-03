@@ -43,6 +43,7 @@ def parse_arguments():
                         help='Add loop edges with the specified weight.')
     parser.add_argument('-n', '--max_v_id', type=int)
     parser.add_argument('-s', '--min_sim', type=float, default=0)
+    parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -54,6 +55,16 @@ def main():
            if args.input_file is not None \
            else load_sims(sys.stdin, max_v_id=args.max_v_id, min_sim=args.min_sim)
     c = chinese_whispers(sims)
-    for i in range(c.shape[0]):
-        print(i+1, c[i]+1, sep='\t')
+    if args.verbose:
+        s = np.array(sims.sum(axis=1)).flatten()
+        scores = np.zeros(sims.shape[0])
+        for i in range(sims.shape[0]):
+            j = np.arange(sims.indptr[i], sims.indptr[i+1])
+            j = j[c[sims.indices[j]] == c[i]]
+            scores[i] = sims.data[j].sum()
+        for i in range(c.shape[0]):
+            print(i+1, c[i]+1, scores[i], scores[i] / s[i] if s[i] > 0 else 0, sep='\t')
+    else:
+        for i in range(c.shape[0]):
+            print(i+1, c[i]+1, sep='\t')
 
