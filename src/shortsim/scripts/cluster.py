@@ -8,26 +8,49 @@ from shortsim.clustering import chinese_whispers
 
 def load_sims(fp, max_v_id = None, min_sim = 0, loop_weight = 0):
     n = 1
-    data = []
+    indptr = np.zeros(1024, dtype=np.uint32)
+    indices = np.zeros(1024, dtype=np.uint32)
+    data = np.zeros(1024)
+    i, j, offset = 0, 0, 0
     print('Reading the input', file=sys.stderr)
     for line in fp:
         row = line.rstrip().split('\t')
         v1_id, v2_id, sim = int(row[0]), int(row[1]), float(row[2])
-        if (max_v_id is None or (v1_id < max_v_id and v2_id < max_v_id)) \
-                and sim > min_sim:
-            data.append((v1_id, v2_id, sim))
-        if v1_id > n:
-            n = v1_id
-        if v2_id > n:
-            n = v2_id
-    print('Buiding the matrix...', file=sys.stderr)
-    sims = lil_matrix((n, n), dtype=np.float32)
-    if loop_weight > 0:
-        for i in range(sims.shape[0]):
-            sims[i,i] = loop_weight
-    for v1_id, v2_id, sim in tqdm.tqdm(data):
-        sims[v1_id-1, v2_id-1] = (sim-min_sim)/(1-min_sim)
-    return csr_matrix(sims)
+        if (max_v_id is not None and (v1_id >= max_v_id or v2_id >= max_v_id)) \
+                or sim < min_sim:
+            continue
+        if i > v1_id:
+            raise RuntimeError(
+                'The input data must be sorted by the first column '
+                'in ascending order!')
+        while i < v1_id-1:
+            if loop_weight > 0:
+                indices[j] = i
+                data[j] = loop_weight
+                j += 1
+                if j >= indices.shape[0]:
+                    indices.resize(indices.shape[0] * 2, refcheck=False)
+                    data.resize(data.shape[0] * 2, refcheck=False)
+            indptr[i+1] = j
+            # sort the newly added row by indices
+            if indptr[i+1] > indptr[i]:
+                k = np.argsort(indices[indptr[i]:indptr[i+1]])
+                indices[indptr[i]:indptr[i+1]] = indices[indptr[i]+k]
+                data[indptr[i]:indptr[i+1]] = data[indptr[i]+k]
+            i += 1
+            if i+1 >= indptr.shape[0]:
+                indptr.resize(indptr.shape[0] * 2, refcheck=False)
+        indices[j] = v2_id-1
+        data[j] = sim
+        j += 1
+        if j >= indices.shape[0]:
+            indices.resize(indices.shape[0] * 2, refcheck=False)
+            data.resize(data.shape[0] * 2, refcheck=False)
+    indptr.resize(i+2, refcheck=False)
+    indptr[-1] = j
+    indices.resize(j, refcheck=False)
+    data.resize(j, refcheck=False)
+    return csr_matrix((data, indices, indptr))
 
 def load_sims_from_file(filename, **kwargs):
     with open(filename) as fp:
