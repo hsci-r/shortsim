@@ -24,24 +24,24 @@ of short strings. It uses the
 nearest neighbors wrt. cosine similarity, so that it works efficiently even
 for millions of strings (especially on a GPU).
 
-The script takes (on stdin) the input data in following format
-(`id <TAB> string`):
+The script takes (on stdin) the input data as a list of strings
+(one string per line, strings must not contain newline characters):
 
 ```
-1	This is an example.
-2	This is a second example.
-3	This would be a third example.
+This is an example.
+This is a second example.
+This would be a third example.
 ```
 
-And returns the three-column list of: `id_1 <TAB> id_2 <TAB> similarity`:
+And returns the three-column list of: `string_1 <TAB> string_2 <TAB> similarity`:
 
 ```
-1       2       0.8058231
-1       3       0.5938157
-2       1       0.8058231
-2       3       0.6250541
-3       2       0.6250541
-3       1       0.5938157
+This is an example.     This is a second example.       0.8058231
+This is an example.     This would be a third example.  0.5938157
+This is a second example.       This is an example.     0.8058231
+This is a second example.       This would be a third example.  0.6250541
+This would be a third example.  This is a second example.       0.6250541
+This would be a third example.  This is an example.     0.5938157
 ```
 
 The results are limited to `k` nearest neighbors for every target string,
@@ -59,17 +59,11 @@ still be used as a query, so that this allows for searching similarities
 rather than *within one dataset*.
 * `-k`: the number of nearest neighbors to compute for every string. (default:
 10, in practice higher values are useful)
-* `-m`, `--min-ngrams`: The minimum number of used n-grams (from our vocabulary
-of `d` most frequent) to consider a string. Strings containing less than `m`
-n-grams are discarded, so that we avoid vectors with almost only zeros being
-all similar to each other. (default: 10)
 * `-n`: the "n" in "n-gram" (default: 2, i.e. bigrams)
 * `-q`, `--query-size`: how much points to pass to FAISS in one query. This
 doesn't affect the results, only performance, and it's safe to leave the
 default value in place. (default: 100)
 * `-t`, `--threshold`: minimum similarity to output a pair. (default: 0.7)
-* `-T`, `--text`: additionaly to IDs, print also the strings on the output. The
-output is then a five-column list instead of three.
 * `-p`, `--print-progress`: print a progress bar while searching for
 similarities.
 * `-w`, `--weighting`: the function to apply to the n-gram frequency matrix.

@@ -27,13 +27,7 @@ def find_similarities(index, m, k, threshold, query_size, print_progress):
 
 
 def read_verses(fp):
-    result = []
-    for line in fp:
-        spl = line.rstrip().split('\t')
-        if len(spl) < 2: continue
-        v_id, text = spl[0], spl[1]
-        result.append((v_id, text))
-    return result
+    return [x.rstrip() for x in fp.readlines()]
 
 
 def parse_arguments():
@@ -50,9 +44,6 @@ def parse_arguments():
         '-i', '--index-file', metavar='FILE',
         help='Read the verses to index from a separate file.')
     parser.add_argument(
-        '-m', '--min-ngrams', type=int, default=10,
-        help='Minimum number of known n-grams to consider a verse.')
-    parser.add_argument(
         '-n', type=int, default=2,
         help='The size (`n`) of the n-grams (default: 2, i.e. ngrams).')
     parser.add_argument(
@@ -62,9 +53,6 @@ def parse_arguments():
     parser.add_argument(
         '-t', '--threshold', type=float, default=0.7,
         help='Minimum similarity to output.')
-    parser.add_argument(
-        '-T', '--text', action='store_true',
-        help='Print the strings additionally to IDs.')
     parser.add_argument(
         '-p', '--print-progress', action='store_true',
         help='Print a progress bar.')
@@ -92,20 +80,19 @@ def main():
 
     sys.stderr.write('Counting n-gram frequencies\n')
     ngram_ids = determine_top_ngrams(
-        [text for (v_id, text) in index_verses+query_verses],
-        args.n, args.dim)
+        index_verses+query_verses, args.n, args.dim)
     sys.stderr.write(' '.join(ngram_ids.keys()) + '\n')
 
     sys.stderr.write('Creating a dense matrix\n')
-    query_v_ids, query_v_texts, query_ngr_ids, query_m = \
+    query_m = \
         vectorize(query_verses, ngram_ids=ngram_ids,
-                  n=args.n, dim=args.dim, min_ngrams=args.min_ngrams,
+                  n=args.n, dim=args.dim,
                   weighting=args.weighting)
-    index_v_ids, index_v_texts, index_m = query_v_ids, query_v_texts, query_m
+    index_m = query_m
     if index_verses:
-        index_v_ids, index_v_texts, index_ngr_ids, index_m = \
+        index_m = \
             vectorize(index_verses, ngram_ids=ngram_ids,
-                      n=args.n, dim=args.dim, min_ngrams=args.min_ngrams,
+                      n=args.n, dim=args.dim,
                       weighting=args.weighting)
 
     sys.stderr.write('Creating a FAISS index\n')
@@ -119,12 +106,8 @@ def main():
     sims = find_similarities(index, query_m, args.k, args.threshold,
                              args.query_size, args.print_progress)
     for i, j, sim in sims:
-        v1_id = query_v_ids[i]
-        v2_id = index_v_ids[j]
-        if args.text:
-            v1_text = query_v_texts[i]
-            v2_text = index_v_texts[j]
-            print(v1_id, v1_text, v2_id, v2_text, sim, sep='\t')
+        if index_verses:
+            print(query_verses[i], index_verses[j], sim, sep='\t')
         else:
-            print(v1_id, v2_id, sim, sep='\t')
+            print(query_verses[i], query_verses[j], sim, sep='\t')
 
