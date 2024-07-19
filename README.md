@@ -98,14 +98,22 @@ output is then a four-column list instead of two.
 ### `shortsim-cluster`
 
 This implements the Chinese Whispers clustering algorithm. It takes as input
-a three-column list of similarities ( `id_1 <TAB> id_2 <TAB> similarity`):
+a list of nodes, followed by a blank line and a list of edges.
+The list of nodes contains one node ID (string) per line. The list of
+edges is a three-column list of similarities ( `id_1 <TAB> id_2 <TAB>
+similarity`).  **Important:** the list of edges should be sorted by the
+first column in the same order as the list of nodes (otherwise an error
+will be thrown). For example:
 
 ```
+1
+2
+
 1       2       0.8058231
 2       1       0.8058231
 ```
 
-And prints out a list of `id <TAB> cluster_id`. The cluster IDs are ordered
+The output is a list of `id <TAB> cluster_id`. The cluster IDs are ordered
 by size, so that 1 is the largest cluster:
 
 ```
@@ -127,7 +135,6 @@ stdin. (This will be fixed.)
 CLI parameters:
 
 * `-i`, `--input-file`: the input file,
-* `-n`, `--max_v_id`: take only IDs `< n` (by default not applied),
 * `-s`, `--min_sim`: take only similarities larger than this threshold
 (default: 0.7).
 
