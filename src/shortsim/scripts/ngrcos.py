@@ -9,7 +9,7 @@ import faiss
 import numpy as np
 from numpy.linalg import norm
 
-from shortsim.ngrcos import determine_top_ngrams, vectorize
+from shortsim.ngrcos import count_ngrams, vectorize
 
 
 def find_similarities(index, m, k, threshold, query_size, print_progress):
@@ -79,9 +79,10 @@ def main():
             index_verses = read_verses(fp)
 
     sys.stderr.write('Counting n-gram frequencies\n')
-    ngram_ids = determine_top_ngrams(
-        index_verses+query_verses, args.n, args.dim)
-    sys.stderr.write(' '.join(ngram_ids.keys()) + '\n')
+    ngram_ids = count_ngrams(index_verses+query_verses, args.n)
+    sys.stderr.write(' '.join(
+        ngr for ngr, ngr_id in ngram_ids.items() if ngr_id < args.dim)\
+        + '\n')
 
     sys.stderr.write('Creating a dense matrix\n')
     query_m = \
