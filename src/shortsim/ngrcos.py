@@ -43,6 +43,6 @@ def vectorize(strings, n=2, dim=200, ngram_ids=None,
     elif weighting == 'binary':
         m = np.asarray(m > 0, dtype=np.float32)
     if normalize:
-        m = np.divide(m, lengths, where=lengths > 0)
+        m = np.divide(m, lengths, where=lengths > 0, out = m)
     return m
 
